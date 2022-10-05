@@ -13,7 +13,7 @@ spec:
     - name: php-project-service
       port: 8102    #服务(svc) 访问端口
       protocol: TCP
-      targetPort: 3002 # pod （容器）端口
+      targetPort: 80 # pod （容器）端口
       nodePort: 30012 # pod （容器）端口
   selector:
     app: php-project
