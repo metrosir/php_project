@@ -1,0 +1,57 @@
+pipeline {
+
+    stages {
+        stage ("build image") {
+            steps {
+                echo "----------------------生产docker镜像------------------"
+                sh '''
+set -eu
+
+IMG_REGISTRY="192.144.178.98:443"
+IMG_NAME="my/php"
+IMG_TAG="${GIT_PREVIOUS_COMMIT}"
+IMG_FULL_NAME="${IMG_REGISTRY}/${IMG_NAME}:${IMG_TAG}"
+
+echo "login registry!"
+docker login -u t1 -p 'Oa123!@#' 192.144.178.98:443
+echo "IMG_TAG:${GIT_PREVIOUS_COMMIT}, build image!"
+docker build -t ${IMG_FULL_NAME} -f Dockerfile .
+echo "push image!"
+docker push ${IMG_FULL_NAME}
+echo "rmi image!"
+docekr rmi ${IMG_FULL_NAME} || true
+
+sed -i "s#{{IMG_NAME}}#${IMG_FULL_NAME}#g" deploy/deploy.yaml
+sed -i "s#{{APP_VERSION}}#${IMG_TAG}#g" deploy/deploy.yaml
+echo "toimges.sh ok~"
+                '''
+            }
+        }
+        stage ("to k8s") {
+            steps {
+                echo "----------------------部署到k8s------------------"
+                sh '''
+set -eu
+
+PROJECT_NAME='php_project'
+SSH_IP='10.0.16.9'
+SSH_USER='zhengqilin'
+UPLOAD_DIR="/home/zhengqilin/deploy/${PROJECT_NAME}"
+DEPLOY_FILE="${UPLOAD_DIR}/deploy.yaml"
+
+echo "[tok8s.1] rm -rf old deploy.yaml!"
+ssh ${SSH_USER}@${SSH_IP} "rm -rf ${DEPLOY_FILE}" || true
+echo "[tok8s.2] mkdir"
+ssh ${SSH_USER}@${SSH_IP} "mkdir -p ${UPLOAD_DIR}"
+
+echo "[tok8s.3]"
+scp -r deploy/deploy.yaml ${SSH_USER}@${SSH_IP}:${DEPLOY_FILE}
+
+echo "[tok8s.4]"
+ssh ${SSH_USER}@${SSH_IP} "kubectl apply -f ${DEPLOY_FILE}"
+echo "[tok8s.5] ${SSH_USER}@${SSH_IP} 'kubectl apply -f ${DEPLOY_FILE}'"
+                '''
+            }
+        }
+    }
+}

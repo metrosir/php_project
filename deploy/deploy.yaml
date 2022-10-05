@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  namespace: ns-test
+  labels:
+    app: php-project-service
+    appName: php-project-service
+  name: php-project-service
+spec:
+  type: NodePort
+  ports:
+    - name: php-project-service
+      port: 8102    #服务(svc) 访问端口
+      protocol: TCP
+      targetPort: 3002 # pod （容器）端口
+      nodePort: 30012 # pod （容器）端口
+  selector:
+    app: php-project
+status:
+  loadBalancer: {}
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: ns-test
+  name: php-project-deployment
+  labels:     # 自定义资源的标签
+    app: web2
+    appName: php-project-web2
+    version: {{APP_VERSION}}
+spec:
+  selector:
+    matchLabels:
+      app: php-project
+      appName: php-project-web
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: php-project
+        appName: php-project-web
+    spec:
+      containers:
+        - name: php
+          image: {{IMG_NAME}}
+          resources:
+            limits:
+              cpu: 100m
+              memory: 200Mi
+            requests:
+              cpu: 50m
+              memory: 200Mi
+          ports:
+            - containerPort: 80
